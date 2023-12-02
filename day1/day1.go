@@ -3,38 +3,76 @@ package day1
 import (
 	"advent23/utils"
 	"fmt"
-	"os"
-	"sort"
-	"strconv"
+	"strings"
 )
 
 func Day1() {
-	fmt.Println("hello")
-	var instr, err = utils.ReadLines("day1/day1.txt")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(0)
-	}
+	part1()
+	part2()
+}
 
-	var elves []int
-	var curElfCals int
-	for _, x := range instr {
-		if x == "" {
-			elves = append(elves, curElfCals)
-			curElfCals = 0
-		} else {
-			var pint, err = strconv.Atoi(x)
-			if err != nil {
-				os.Exit(0)
+func part1() {
+	var instr, _ = utils.ReadLines("day1/input.txt")
+
+	sum := 0
+	for _, row := range instr {
+		firstNum := -1
+		lastNum := -1
+		for _, cell := range row {
+			if cell >= '0' && cell <= '9' {
+				if firstNum == -1 {
+					firstNum = int(cell) - '0'
+					lastNum = firstNum
+				} else {
+					lastNum = int(cell) - '0'
+				}
 			}
-			curElfCals = curElfCals + pint
+		}
+		fmt.Println(firstNum, lastNum)
+		if firstNum != -1 {
+			sum += firstNum*10 + lastNum
 		}
 	}
-	sort.Sort(sort.Reverse(sort.IntSlice(elves)))
-	var total int
-	for i := 0; i < 3; i++ {
-		fmt.Println("elf", i, elves[i])
-		total += elves[i]
+	fmt.Println("part 1 answer", sum)
+}
+
+func part2() {
+	var instr, _ = utils.ReadLines("day1/input.txt")
+
+	tokens := []string{
+		"zero",
+		"one",
+		"two",
+		"three",
+		"four",
+		"five",
+		"six",
+		"seven",
+		"eight",
+		"nine",
+		"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
 	}
-	fmt.Println("total", total)
+
+	sum := 0
+	for _, row := range instr {
+		firstNum := -1
+		lastNum := -1
+		for i, _ := range row {
+			for k, token := range tokens {
+				if strings.Index(row[i:], token) == 0 {
+					if firstNum == -1 {
+						firstNum = k % 10
+						lastNum = firstNum
+					} else {
+						lastNum = k % 10
+					}
+				}
+			}
+		}
+		fmt.Println(firstNum, lastNum)
+		if firstNum != -1 {
+			sum += firstNum*10 + lastNum
+		}
+	}
+	fmt.Println("part 2 answer", sum)
 }
