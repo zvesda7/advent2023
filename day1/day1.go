@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func Day1() {
+func Run() {
 	part1()
 	part2()
 }
