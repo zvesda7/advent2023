@@ -4,7 +4,6 @@ import (
 	"advent23/utils"
 	"fmt"
 	"math"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,88 +15,142 @@ type Route struct {
 	offset int64
 }
 
+type Range struct {
+	start int64
+	count int64
+}
+
 func Run() {
-	var input, _ = utils.ReadLines("day5/test.txt")
-	seeds, maps := parse(input)
+	var input, _ = utils.ReadLines("day5/input.txt")
+	seeds, seedRanges, maps := parse(input)
+
+	x := reduce(maps)
 
 	lowest := int64(math.MaxInt64)
 	for _, seed := range seeds {
-		val := route(seed, maps)
+		val := route2(seed, x)
 		if val < lowest {
 			lowest = val
 		}
 	}
-	fmt.Println(maps)
-	slices.Reverse(maps)
-	for _, mp := range maps {
-		sortRoutes(&mp)
-		for _, rt := range mp {
-			fmt.Println(rt.start, rt.end, rt.offset)
-		}
-		fmt.Println()
+
+	fmt.Println("Part1", lowest)
+
+	fakeRoutesForSeeds := []Route{}
+	for _, r := range seedRanges {
+		fakeRoutesForSeeds = append(fakeRoutesForSeeds, Route{r.start, r.start + r.count - 1, 0})
 	}
-	fmt.Println(lowest)
+	x = reducePair(fakeRoutesForSeeds, x, true)
+
+	lowest = int64(math.MaxInt64)
+	for _, route := range x {
+
+		val := route.start + route.offset
+		if val < lowest {
+			lowest = val
+		}
+	}
+	fmt.Println("Part2", lowest)
 }
 
 func sortRoutes(r *[]Route) {
 	sort.Slice(*r, func(i, j int) bool {
-		return (*r)[i].start < (*r)[j].end
+		return (*r)[i].start < (*r)[j].start
+	})
+}
+
+func sortRoutesByDest(r *[]Route) {
+	sort.Slice(*r, func(i, j int) bool {
+		return (*r)[i].start+(*r)[i].offset < (*r)[j].start+(*r)[j].offset
 	})
 }
 
 func reduce(maps [][]Route) []Route {
 	final := maps[0]
 	for i := 1; i < len(maps); i++ {
-		final = reducePair(final, maps[i])
+		final = reducePair(final, maps[i], false)
 	}
 	return final
 }
+func reducePair(x []Route, y []Route, noYOnly bool) []Route {
+	sortRoutesByDest(&x)
+	sortRoutes(&y)
 
-func reducePair(a []Route, b []Route) []Route {
 	final := []Route{}
 	i, j := 0, 0
 	a, b := Route{}, Route{}
-	for i < len(a) && j < len(b) {
-		a, b = a[i], b[j]
-		if a.start < b.start && a.end < b.end {
+	for i < len(x) && j < len(y) {
+		a, b = x[i], y[j]
+		adstart := a.start + a.offset
+		adend := a.end + a.offset
+
+		if adstart < b.start && adend < b.start {
 			final = append(final, a)
 			i++
-		} else if b.start < a.start && b.end < a.end {
-			final = append(final, b)
+		} else if b.start < adstart && b.end < adstart {
+			if !noYOnly {
+				final = append(final, b)
+			}
 			j++
-		} else if  {
-		} else if b.start < a.start && b. {
+		} else {
+			//overlap
+
+			final = append(final, Route{max(adstart, b.start) - a.offset, min(adend, b.end) - a.offset, a.offset + b.offset})
+			if adstart < b.start {
+				final = append(final, Route{a.start, b.start - 1 - a.offset, a.offset})
+			} else if b.start < adstart && !noYOnly {
+				final = append(final, Route{b.start, adstart - 1, b.offset})
+			}
+			if adend > b.end {
+				x[i].start = b.end + 1 - a.offset
+				j++
+			} else if b.end > adend {
+				y[j].start = adend + 1
+				i++
+			} else {
+				i++
+				j++
+			}
+
 		}
 	}
-	sortRoutes(&final)
+	for ; i < len(x); i++ {
+		final = append(final, x[i])
+	}
+	if !noYOnly {
+		for ; j < len(y); j++ {
+			final = append(final, y[j])
+		}
+	}
+	//fmt.Println(final)
 	return final
 }
 
-func route(seed int64, maps [][]Route) int64 {
+func route2(seed int64, maps []Route) int64 {
 	//find correct route, if any
-	cval := seed
-	for _, mp := range maps {
-		var croute *Route
-		for _, route := range mp {
-			if cval >= route.start && cval <= route.end {
-				croute = &route
-				break
-			}
-		}
-		if croute != nil {
-			cval += croute.offset
+	for _, route := range maps {
+		if seed >= route.start && seed <= route.end {
+			return seed + route.offset
 		}
 	}
-	return cval
+
+	return 0
 }
 
-func parse(input []string) ([]int64, [][]Route) {
+func parse(input []string) ([]int64, []Range, [][]Route) {
 	rowPos := 0
 	seeds := []int64{}
 	seeds_s := strings.Split(input[rowPos], " ")
 	for i := 1; i < len(seeds_s); i++ {
 		seed, _ := strconv.ParseInt(seeds_s[i], 10, 64)
 		seeds = append(seeds, seed)
+	}
+	seedRanges := []Range{}
+	for i := 1; i < len(seeds_s); i += 2 {
+		seedRange := Range{}
+		seedRange.start, _ = strconv.ParseInt(seeds_s[i], 10, 64)
+		seedRange.count, _ = strconv.ParseInt(seeds_s[i+1], 10, 64)
+		seedRanges = append(seedRanges, seedRange)
 	}
 	rowPos += 1
 	maps := [][]Route{}
@@ -113,48 +166,5 @@ func parse(input []string) ([]int64, [][]Route) {
 		}
 		maps = append(maps, mp)
 	}
-	return seeds, maps
+	return seeds, seedRanges, maps
 }
-
-//
-
-//56 92 4
-//93 96 -37
-//
-//0 68 1
-//69 69 -69
-//
-//0 55 4
-//56 68 5
-//69 69 -65
-//70 92 4
-//93 96 -37
-
-
-
-
-
-//56 92 4
-//93 96 -37
-//
-//0 68 1
-//69 69 -69
-//
-//45 63 36
-//64 76 4
-//77 99 -32
-//
-//18 24 70
-//25 94 -7
-//
-//0 6 42
-//7 10 50
-//11 52 -11
-//53 60 -4
-//
-//0 14 39
-//15 51 -15
-//52 53 -15
-//
-//50 97 2
-//98 99 -48
