@@ -12,72 +12,79 @@ type Hand struct {
 	bid   int
 }
 
-type HandInfo struct {
-	fiveOfAKind  int
-	fourOfAKind  int
-	threeOfAKind int
-	pairs        [2]int //max 2
-	cards        [5]int //max 5
+var cardValues = map[byte]int{
+	'2': 2,
+	'3': 3,
+	'4': 4,
+	'5': 5,
+	'6': 6,
+	'7': 7,
+	'8': 8,
+	'9': 9,
+	'T': 10,
+	'J': 11,
+	'Q': 12,
+	'K': 13,
+	'A': 14,
 }
 
-var cardValues = map[byte]int{
-	'2': 0,
-	'3': 1,
-	'4': 2,
-	'5': 3,
-	'6': 4,
-	'7': 5,
-	'8': 6,
-	'9': 7,
-	'T': 8,
-	'J': 9,
-	'Q': 10,
-	'K': 11,
-	'A': 12,
+var strengths = map[int]int{
+	50: 6,
+	41: 5,
+	32: 4,
+	31: 3,
+	22: 2,
+	21: 1,
+	11: 0,
 }
 
 func Run() {
-	var input, _ = utils.ReadLines("day7/test.txt")
+	var input, _ = utils.ReadLines("day7/input.txt")
 	hands := parse(input)
-	fmt.Println(hands)
+
+	fmt.Println("Part 1", calcTotal(hands))
+
+	//convert jacks to jokers
+	for k := 0; k < len(hands); k++ {
+		for i := 0; i < 5; i++ {
+			if hands[k].cards[i] == 11 {
+				hands[k].cards[i] = 1
+			}
+		}
+	}
+
+	fmt.Println("Part 2", calcTotal(hands))
 }
 
-func HandCompare(a, b Hand) bool {
+func calcTotal(hands []Hand) int {
+	sort.Slice(hands, func(i, j int) bool {
+		return calcStrength(&hands[i]) < calcStrength(&hands[j])
+	})
 
+	total := 0
+	for i, h := range hands {
+		total += h.bid * (i + 1)
+	}
+	return total
 }
 
 func calcStrength(a *Hand) int {
-	info := HandInfo{}
-	cardCounts := [13]int{}
+	cardCounts := [15]int{}
 	for _, c := range a.cards {
 		cardCounts[c]++
 	}
+	joker := cardCounts[1]
+	cardCounts[1] = 0
+	sort.Ints(cardCounts[:])
+	cardCounts[14] += joker
 
-	pairI, cardI := 0, 0
-	for i, cnt := range cardCounts {
-		if cnt == 5 {
-			info.fiveOfAKind = i
-		} else if cnt == 4 {
-			info.fourOfAKind = i
-		} else if cnt == 3 {
-			info.threeOfAKind = i
-		} else if cnt == 2 {
-			info.pairs[pairI] = i
-			pairI++
-		} else if cnt == 1 {
-			info.cards[cardI] = i
-			cardI++
-		}
-	}
-	sort.Sort(sort.Reverse(sort.IntSlice(info.pairs[:])))
-	sort.Sort(sort.Reverse(sort.IntSlice(info.cards[:])))
-	
-	placeMultipliers := []int{0x10000, 0x1000, 0x100, 0x10, 0x1, 0}
+	strength := strengths[cardCounts[14]*10+cardCounts[13]]
 
-	strength := 0
-	if info.fiveOfAKind > 0 {
-		return info.fiveOfAKind * 
+	for i := 0; i < 5; i++ {
+		strength += strength*0x10 + a.cards[i]
 	}
+
+	return strength
 }
 
 func parse(input []string) []Hand {
