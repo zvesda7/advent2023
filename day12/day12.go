@@ -9,39 +9,29 @@ import (
 
 func Run() {
 
-	var input, _ = utils.ReadLines("day12/test.txt")
-	//fmt.Println(combos(7, []int{2, 1}))
+	var input, _ = utils.ReadLines("day12/input.txt")
 
 	sum := 0
-	//for _, row := range input {
-	//	pat, counts := parseRow(row)
-	//	combos := calcCombos(pat, counts)
-	//	sum += combos
-	//}
-	//fmt.Println("Part 1", sum)
+	for _, row := range input {
+		pat, counts := parseRow(row)
+		combos := calcCombos(pat, counts)
+		sum += combos
+	}
+	fmt.Println("Part 1", sum)
 
 	sum = 0
 	for _, row := range input {
 		pat, counts := parseRow(row)
 
-		//combos1 := calcCombos(pat, counts)
-		combos2 := calcCombos(pat+"?"+pat, append(counts, counts...))
-		//combos3 := calcCombos(pat+"?"+pat+"?"+pat, append(append(counts, counts...), counts...))
-		//combos4 := calcCombos(pat+"?"+pat+"?"+pat+"?"+pat, append(append(append(counts, counts...), counts...), counts...))
-		//ratio := combos2 / combos1
-		//ratio2 := combos3 / combos2
-		//ratio3 := combos4 / combos3
-		//if ratio != ratio2 {
-		//	fmt.Println(pat, counts, combos1, combos2, combos3, combos4, ratio, ratio2, ratio3, "bad")
-		//} else {
-		//	fmt.Println(pat, counts, combos1, ratio, ratio2, "good")
-		//}
-		//total := combos1
-		//for i := 0; i < 4; i++ {
-		//	total *= ratio
-		//}
-		//sum += total
-		sum += combos2
+		newPat := pat
+		newCounts := counts
+		for i := 0; i < 4; i++ {
+			newPat += "?" + pat
+			newCounts = append(newCounts, counts...)
+		}
+
+		combos := calcCombos(newPat, newCounts)
+		sum += combos
 
 	}
 	fmt.Println("Part 2", sum)
@@ -55,13 +45,14 @@ func calcCombos(pat string, counts []int) int {
 	n -= len(counts) - 1 //spaces that have to exist.
 	k := len(counts) + 1 //gap before first
 
-	return perm([]byte(pat), counts, 0, n, k)
+	memos := map[string]int{}
+	cnt := perm([]byte(pat), counts, 1, n, k, &memos)
+	return cnt
 }
 
-func perm(pat []byte, counts []int, countI int, n int, k int) int {
-	fmt.Println(string(pat), n, k)
+func perm(pat []byte, counts []int, first int, n int, k int, memos *map[string]int) int {
 	if k == 1 {
-		if _, ok := checkMatch(pat, counts, countI, n); ok {
+		if _, ok := checkMatch(pat, counts, first, n); ok {
 			return 1
 		} else {
 			return 0
@@ -71,23 +62,30 @@ func perm(pat []byte, counts []int, countI int, n int, k int) int {
 	for x := 0; x <= n; x++ {
 		if n-x >= 0 {
 
-			if newPat, ok := checkMatch(pat, counts, countI, x); ok {
-				total += perm(newPat, counts, countI+1, n-x, k-1)
+			if newPat, ok := checkMatch(pat, counts, first, x); ok {
+				params := fmt.Sprintln(newPat, counts[1:], 0, n-x, k-1)
+				if val, ok := (*memos)[params]; ok {
+					total += val
+				} else {
+					val := perm(newPat, counts[1:], 0, n-x, k-1, memos)
+					(*memos)[params] = val
+					total += val
+				}
 			}
 		}
 	}
 	return total
 }
 
-func checkMatch(pat []byte, counts []int, countsI int, extraSpace int) ([]byte, bool) {
+func checkMatch(pat []byte, counts []int, first int, extraSpace int) ([]byte, bool) {
 	s := ""
 
 	s += strings.Repeat(".", extraSpace)
-	if countsI > 0 && countsI < len(counts) {
+	if first == 0 && len(counts) != 0 {
 		s += "."
 	}
-	if countsI < len(counts) {
-		s += strings.Repeat("#", counts[countsI])
+	if len(counts) > 0 {
+		s += strings.Repeat("#", counts[0])
 	}
 
 	for i := 0; i < len(s); i++ {
