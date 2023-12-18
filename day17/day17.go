@@ -2,9 +2,7 @@ package day17
 
 import (
 	"advent23/utils"
-	"bufio"
 	"fmt"
-	"os"
 	"sort"
 )
 
@@ -19,9 +17,16 @@ func (p *Point) hash() PHash {
 	return PHash(p.y*1000 + p.x)
 }
 
+type Node struct {
+	parent *Node
+	point  Point
+	cost   int
+	steps  int
+}
+
 func Run() {
 
-	var input, _ = utils.ReadLines("day17/test.txt")
+	var input, _ = utils.ReadLines("day17/test2.txt")
 
 	width := len(input[0])
 	height := len(input)
@@ -33,113 +38,94 @@ func Run() {
 		}
 	}
 
-	points := []Point{}
 	p0 := Point{0, 0}
-	points = append(points, p0)
+	root := Node{nil, p0, 0, 0}
+	root2 := Node{&root, p0, 0, 0}
+	carts := []Node{root2}
 
-	dists := map[PHash]int{}
-	dists[p0.hash()] = 0
-
-	prevP := map[PHash]Point{}
-	prevP[p0.hash()] = Point{-1, -1}
-
-	for len(points) > 0 {
-
-		adj := neighbors(points[0], width, height)
-		//p1 := prevP[points[0].hash()]
-		//p2 := prevP[p1.hash()]
+	for len(carts) > 0 {
+		if carts[0].point.x == width-1 && carts[0].point.y == 0 {
+			for i := 0; i < len(carts); i++ {
+				fmt.Println(carts[i].steps, carts[i].cost)
+				printRoute(&carts[i], width, height, efforts)
+			}
+			break
+		}
+		adj := neighbors(carts[0].point, width, height)
 		for j := 0; j < len(adj); j++ {
-			if _, found := dists[adj[j].hash()]; !found {
-				if allowed(points[0], adj[j], dists, efforts, width, height, 0) {
-					dists[adj[j].hash()] = dists[points[0].hash()] + efforts[adj[j].hash()]
-					points = append(points, adj[j])
-					//prevP[adj[j].hash()] = points[0]
-				}
+			already := onPath(adj[j], &carts[0])
+			tooMany := tooMany(adj[j], &carts[0])
+			if !already && !tooMany {
+				n := Node{&carts[0], adj[j], carts[0].cost + efforts[adj[j].hash()], carts[0].steps + 1}
+				carts = append(carts, n)
 			}
 		}
-		points = points[1:]
-		sort.Slice(points, func(i, j int) bool {
-			return dists[points[i].hash()] < dists[points[j].hash()]
+		carts = carts[1:]
+		sort.Slice(carts, func(i, j int) bool {
+			return carts[i].cost < carts[j].cost
 		})
-		print(width, height, dists, efforts)
-		bufio.NewReader(os.Stdin).ReadBytes('\n')
-	}
-
-	path := map[PHash]bool{}
-	pp := Point{width - 1, height - 1}
-	for !(pp.x == 0 && pp.y == 0) {
-		path[pp.hash()] = true
-		pp = prevP[pp.hash()]
-	}
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			//p := Point{x, y}
-			//if _, ok := path[p.hash()]; ok {
-			//	fmt.Printf("\033[32m")
-			//}
-			//fmt.Printf("[%3d]", dists[p.hash()])
-			//fmt.Printf("\033[0m")
-		}
-		//fmt.Printf("\n")
+		//for i := 0; i < len(carts); i++ {
+		//	fmt.Println(i, carts[i].point, carts[i].cost, carts[i].steps)
+		//}
+		fmt.Println(len(carts), carts[0].cost, carts[0].steps)
+		//bufio.NewReader(os.Stdin).ReadBytes('\n')
 	}
 }
 
-func allowed(s Point, d Point, dists map[PHash]int, efforts map[PHash]int, width int, height int, depth int) bool {
-	adj := neighbors(s, width, height)
-	tadj := []Point{}
-	sDist := dists[s.hash()]
-	sEff := efforts[s.hash()]
-	for i := 0; i < len(adj); i++ {
-		tDist := dists[adj[i].hash()]
-		if tDist+sEff == sDist {
-			tadj = append(tadj, adj[i])
+func tooMany(p Point, n *Node) bool {
+	xDiff := false
+	yDiff := false
+	x := p.x
+	y := p.y
+	cnt := 0
+	for ; cnt < 4 && n != nil; cnt++ {
+		if n.point.x != x {
+			xDiff = true
 		}
+		if n.point.y != y {
+			yDiff = true
+		}
+		if xDiff && yDiff {
+			return false
+		}
+		n = n.parent
 	}
-	if len(tadj) == 0 {
+	if cnt == 4 {
 		return true
-	}
-	for i := 0; i < len(tadj); i++ {
-		if !inRow([]Point{tadj[i], s, d}) {
-			return true
-		}
-	}
-	if depth == 0 {
-		return allowed(tadj[0], s, dists, efforts, width, height, depth+1)
 	} else {
 		return false
 	}
 }
 
-func print(width int, height int, dists map[PHash]int, efforts map[PHash]int) {
+func onPath(p Point, n *Node) bool {
+	for n != nil {
+		if p.x == n.point.x && p.y == n.point.y {
+			return true
+		}
+		n = n.parent
+	}
+	return false
+}
+
+func printRoute(n *Node, width int, height int, efforts map[PHash]int) {
+	path := map[PHash]bool{}
+	for n != nil {
+		path[n.point.hash()] = true
+		n = n.parent
+	}
+
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			p := Point{x, y}
-			if _, ok := dists[p.hash()]; ok {
+			if _, ok := path[p.hash()]; ok {
 				fmt.Printf("\033[32m")
-				fmt.Printf("[%3d]", dists[p.hash()])
-			} else {
-				fmt.Printf("\033[0m")
-				fmt.Printf("[%3d]", efforts[p.hash()])
 			}
+			fmt.Printf("[%3d]", efforts[p.hash()])
+			fmt.Printf("\033[0m")
 		}
 		fmt.Printf("\n")
 	}
-}
-
-func inRow(points []Point) bool {
-	xSame := true
-	ySame := true
-	x := points[0].x
-	y := points[0].y
-	for _, p := range points {
-		if p.x != x {
-			xSame = false
-		}
-		if p.y != y {
-			ySame = false
-		}
-	}
-	return xSame || ySame
+	fmt.Printf("\n")
 }
 
 func neighbors(p Point, width int, height int) []Point {
