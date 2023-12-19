@@ -21,12 +21,11 @@ type Node struct {
 	parent *Node
 	point  Point
 	cost   int
-	steps  int
 }
 
 func Run() {
 
-	var input, _ = utils.ReadLines("day17/test2.txt")
+	var input, _ = utils.ReadLines("day17/test.txt")
 
 	width := len(input[0])
 	height := len(input)
@@ -39,37 +38,70 @@ func Run() {
 	}
 
 	p0 := Point{0, 0}
-	root := Node{nil, p0, 0, 0}
-	root2 := Node{&root, p0, 0, 0}
-	carts := []Node{root2}
+	px := Point{-1, 0}
+	py := Point{0, -1}
+	rootx := Node{nil, px, 0}
+	rooty := Node{nil, py, 0}
+	root1 := Node{&rootx, p0, 0}
+	root2 := Node{&rooty, p0, 0}
+	targ := Point{width - 1, height - 1}
 
+	carts := []Node{root1, root2}
+
+	bestToNode := map[int]int{}
+
+	lc := 0
 	for len(carts) > 0 {
-		if carts[0].point.x == width-1 && carts[0].point.y == 0 {
-			for i := 0; i < len(carts); i++ {
-				fmt.Println(carts[i].steps, carts[i].cost)
-				printRoute(&carts[i], width, height, efforts)
-			}
+		if lc++; lc%1000 == 0 {
+			fmt.Println(lc, len(carts), carts[0].cost)
+		}
+		if carts[0].point.x == targ.x && carts[0].point.y == targ.y {
+			fmt.Println(lc, carts[0].cost)
+			printRoute(&carts[0], width, height, efforts)
 			break
 		}
+
 		adj := neighbors(carts[0].point, width, height)
 		for j := 0; j < len(adj); j++ {
+			cost := carts[0].cost + efforts[adj[j].hash()]
 			already := onPath(adj[j], &carts[0])
 			tooMany := tooMany(adj[j], &carts[0])
 			if !already && !tooMany {
-				n := Node{&carts[0], adj[j], carts[0].cost + efforts[adj[j].hash()], carts[0].steps + 1}
-				carts = append(carts, n)
+				if isBest(adj[j], &carts[0], cost, bestToNode) {
+					n := Node{&carts[0], adj[j], cost}
+					carts = append(carts, n)
+				}
 			}
 		}
+
 		carts = carts[1:]
 		sort.Slice(carts, func(i, j int) bool {
 			return carts[i].cost < carts[j].cost
 		})
-		//for i := 0; i < len(carts); i++ {
-		//	fmt.Println(i, carts[i].point, carts[i].cost, carts[i].steps)
-		//}
-		fmt.Println(len(carts), carts[0].cost, carts[0].steps)
-		//bufio.NewReader(os.Stdin).ReadBytes('\n')
 	}
+}
+
+func isBest(p Point, from *Node, cost int, bestMap map[int]int) bool {
+	dir := 0
+	pt := p
+	for i := 0; i < 3 && from != nil; i++ {
+		dir *= 10
+		if pt.x > from.point.x {
+			dir += 1
+		} else if pt.y < from.point.y {
+			dir += 2
+		} else if pt.x < from.point.x {
+			dir += 3
+		}
+		pt = from.point
+		from = from.parent
+	}
+	best, ok := bestMap[int(p.hash())*1000000+dir]
+	if !ok || cost < best {
+		bestMap[int(p.hash())*1000000+dir] = cost
+		return true
+	}
+	return false
 }
 
 func tooMany(p Point, n *Node) bool {
@@ -98,19 +130,19 @@ func tooMany(p Point, n *Node) bool {
 }
 
 func onPath(p Point, n *Node) bool {
-	for n != nil {
+	if n.parent != nil {
+		n = n.parent
 		if p.x == n.point.x && p.y == n.point.y {
 			return true
 		}
-		n = n.parent
 	}
 	return false
 }
 
 func printRoute(n *Node, width int, height int, efforts map[PHash]int) {
-	path := map[PHash]bool{}
+	path := map[PHash]int{}
 	for n != nil {
-		path[n.point.hash()] = true
+		path[n.point.hash()] = n.cost
 		n = n.parent
 	}
 
@@ -119,9 +151,11 @@ func printRoute(n *Node, width int, height int, efforts map[PHash]int) {
 			p := Point{x, y}
 			if _, ok := path[p.hash()]; ok {
 				fmt.Printf("\033[32m")
+				fmt.Printf("[%3d]", path[p.hash()])
+			} else {
+				fmt.Printf("\033[0m")
+				fmt.Printf("[%3d]", efforts[p.hash()])
 			}
-			fmt.Printf("[%3d]", efforts[p.hash()])
-			fmt.Printf("\033[0m")
 		}
 		fmt.Printf("\n")
 	}
