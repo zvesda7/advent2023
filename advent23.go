@@ -1,9 +1,9 @@
 package main
 
 import (
-	"advent23/day17"
+	"advent23/day18"
 )
 
 func main() {
-	day17.Run()
+	day18.Run()
 }
