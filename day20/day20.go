@@ -34,15 +34,31 @@ func Run() {
 	modules := parse(input)
 	root := buildGraph(modules)
 	total := PCount{}
+
 	for i := 0; i < 1000; i++ {
-		subTot := pulse(root)
+		subTot := pulse(root, i+1)
 		total.high += subTot.high
 		total.low += subTot.low
 	}
 	fmt.Println("Part1", total.high*total.low)
+
+	//part2 was done manually
+	//noticed rx going low would require xc,th,pd, adn bp all going high during the same button press.
+	//after rpinting out the button press number to get true on each individual of the 4, came up with these button presses:
+	//bp	3823
+	//xc	3847
+	//pd	3877
+	//th	4001
+	//LCM of these 4 is 228134431501037 (thanks wolfram alpha)
+
+	for i := 0; i < 10000; i++ {
+		subTot := pulse(root, i+1)
+		total.high += subTot.high
+		total.low += subTot.low
+	}
 }
 
-func pulse(root *Module) PCount {
+func pulse(root *Module, bcount int) PCount {
 	button := &Module{}
 	button.name = "button"
 	pulses := []Pulse{{button, root, false}} //initial low pulse into broadcaster aka 'root'
@@ -56,11 +72,13 @@ func pulse(root *Module) PCount {
 			} else {
 				totalPulses.low += 1
 			}
-			//fmt.Println(p.from.name, p.signal, p.to.name)
+
+			if p.to.name == "zh" && p.signal {
+				fmt.Println(p.from.name, p.signal, bcount)
+			}
 			evalPulse(p, &newPulses)
 		}
 		pulses = newPulses
-		//fmt.Println("")
 	}
 	return totalPulses
 }
