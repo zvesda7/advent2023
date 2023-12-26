@@ -17,7 +17,7 @@ type Node struct {
 }
 
 func Run() {
-	var input, _ = utils.ReadLines("day21/input.txt")
+	var input, _ = utils.ReadLines("day21/test2.txt")
 	//part1(input)
 	part2(input)
 }
@@ -26,24 +26,56 @@ func part1(input []string) {
 
 	steps := 6
 	walls, start, width, height := parse(input, 1)
-	printGrid(walls, width, height, map[Point]int{})
+	printGrid(walls, width, height, map[Point]int{}, steps)
 
-	cnt := countCells(start, walls, steps)
+	cnt, _ := countCells(start, walls, steps, width, height)
 
 	fmt.Println("Part 1", cnt)
 }
 
+type PlotCount struct {
+	evenStepNum bool
+	mod2xRow    int
+	aboveStart  bool
+	mod2xCol    int
+}
+
+func part2n(input []string) {
+	steps := 48
+	for i := -steps; i <= steps; i++ {
+		//rowWidth := 2*steps+1 - 2*abs(i)
+
+	}
+}
+
 func part2(input []string) {
-	maxC := 500
+	r := 5
+	maxC := 54 * r
 	l := (len(input) - 1) / 2
 	sc := maxC / l
 	scale := sc*2 + 1
-	walls, start, _, _ := parse(input, scale)
+	fmt.Println("scale", scale)
+	walls, start, w, h := parse(input, 17)
 
-	nums := []int{6, 10, 50, 100, 500}
-	for i := 0; i < len(nums); i++ {
-		cnt := countCells(start, walls, nums[i])
-		fmt.Println(nums[i], cnt)
+	//nums := []int{6, 10, 50, 100, 500, 1000}
+	//for i := 0; i < len(nums); i++ {
+	//	cnt := countCells(start, walls, nums[i])
+	//	fmt.Println(nums[i], cnt)
+	//}
+
+	//nums := []int{2 * r, 6 * r, 18 * r}
+
+	//	for i := r + 1; i < 54*r; i += 2 {
+	//		cnt, furth := countCells(start, walls, i, w, h)
+	//		fmt.Printf("%v,%v,%v\n", i, cnt, furth)
+	//	}
+
+	for i := 1; i < 200; i += 1 {
+		cnt, furth := countCells(start, walls, i, w, h)
+		fmt.Printf("%v,%v,%v\n", i, cnt, furth)
+
+		//fmt.Scanln()
+		//fmt.Println(nums[i], cnt)
 	}
 	//for i := 1; i <= 262; i++ {
 	//	cnt := countCells(start, walls, i)
@@ -57,7 +89,7 @@ func part2(input []string) {
 
 }
 
-func countCells(start Point, walls map[Point]bool, steps int) int {
+func countCells(start Point, walls map[Point]bool, steps int, w int, h int) (int, int) {
 	distances := map[Point]int{}
 	distances[start] = 0
 
@@ -77,12 +109,27 @@ func countCells(start Point, walls map[Point]bool, steps int) int {
 	}
 
 	cnt := 0
-	for _, d := range distances {
-		if d <= steps && d%2 == 0 {
+	max := 0
+	for px, d := range distances {
+		if d <= steps && d%2 == (steps%2) {
 			cnt++
+			if abs(px.x-start.x) > max {
+				max = abs(px.x - start.x)
+			}
+			if abs(px.y-start.y) > max {
+				max = abs(px.y - start.y)
+			}
 		}
 	}
-	return cnt
+	//printGrid(walls, w, h, distances, steps)
+	return cnt, max
+}
+
+func abs(a int) int {
+	if a < 0 {
+		return -a
+	}
+	return a
 }
 
 var dirs = [4]Point{{-1, 0}, {0, -1}, {1, 0}, {0, 1}}
@@ -147,17 +194,19 @@ func parse(input []string, scale int) (map[Point]bool, Point, int, int) {
 	return walls, start, width * scale, height * scale
 }
 
-func printGrid(walls map[Point]bool, width int, height int, distances map[Point]int) {
-
+func printGrid(walls map[Point]bool, width int, height int, distances map[Point]int, steps int) {
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			_, isWall := walls[Point{x, y}]
-			_, isReach := distances[Point{x, y}]
+			d, isReach := distances[Point{x, y}]
 			if isWall {
+				fmt.Printf("\033[0m")
 				fmt.Printf("#")
-			} else if isReach {
+			} else if isReach && d <= steps && d%2 == (steps%2) {
+				fmt.Printf("\033[32m")
 				fmt.Printf("x")
 			} else {
+				fmt.Printf("\033[0m")
 				fmt.Printf(".")
 			}
 		}
