@@ -36,46 +36,51 @@ func part1(input []string) {
 type PlotCount struct {
 	rowNum int
 	width  int
+	left   bool
 }
 
 func part2n(input []string) {
 	maxStep := len(input) * 2
 	walls, start, w, h := parse(input, 19)
 	plotCounts := map[PlotCount]int{}
-	for i := 0; i <= maxStep*3; i++ {
+	for i := 0; i <= maxStep*3; i += 2 {
 		_, _, distances := countCells(start, walls, i, w, h)
 		for point, d := range distances {
 			if d <= i && d%2 == (i%2) {
-				width := (i*2 + 1) - 2*abs(point.y-start.y)
-				if point.x != start.x {
-					plotCounts[PlotCount{point.y - start.y, width}]++
+				width := i - abs(point.y-start.y)
+				if point.x < start.x {
+					plotCounts[PlotCount{point.y - start.y, width, true}]++
+				}
+				if point.x > start.x {
+					plotCounts[PlotCount{point.y - start.y, width, false}]++
 				}
 			}
 		}
 	}
-	for i := -21; i <= 21; i++ {
-		//fmt.Println(i, plotCounts[PlotCount{i, 44 + 1}])
-	}
+
 	//fmt.Println(plotCounts)
 	//steps := 63
-	for steps := 1; steps < 63; steps++ {
+
+	for steps := 26; steps <= 26; steps++ {
 		sum := 0
 		for i := -steps; i <= steps; i++ {
 			rowNum := i % maxStep
-			width := (steps*2 + 1) - 2*abs(i)
-			blockWidth := maxStep * 2
+			width := steps - abs(i)
+			blockWidth := maxStep
 			widthMod := width % blockWidth
 			widthMult := width / blockWidth
 
-			cntRem := plotCounts[PlotCount{rowNum, widthMod}]
-			cntMult := widthMult * plotCounts[PlotCount{rowNum, blockWidth + 1}]
+			cntRemLeft := plotCounts[PlotCount{rowNum, widthMod, true}]
+			cntMultLeft := widthMult * plotCounts[PlotCount{rowNum, blockWidth, true}]
+			cntRemRight := plotCounts[PlotCount{rowNum, widthMod, false}]
+			cntMultRight := widthMult * plotCounts[PlotCount{rowNum, blockWidth, false}]
 			x0 := 0
 			if abs(i)%2 == steps%2 {
 				x0 = 1
 			}
-
-			//fmt.Println(i, rowNum, width, widthMult, widthMod, "\t", cntRem, cntMult, x0)
-			sum += cntRem + cntMult + x0
+			s := cntRemLeft + cntMultLeft + cntRemRight + cntMultRight + x0
+			fmt.Println(i, cntRemLeft, cntMultLeft, cntRemRight, cntMultRight, x0, s)
+			sum += cntRemLeft + cntMultLeft + cntRemRight + cntMultRight + x0
 		}
 		fmt.Println("Part2", steps, sum)
 	}
@@ -88,7 +93,7 @@ func part2(input []string) {
 	sc := maxC / l
 	scale := sc*2 + 1
 	fmt.Println("scale", scale)
-	walls, start, w, h := parse(input, 5)
+	walls, start, w, h := parse(input, 7)
 
 	//nums := []int{6, 10, 50, 100, 500, 1000}
 	//for i := 0; i < len(nums); i++ {
@@ -103,11 +108,21 @@ func part2(input []string) {
 	//		fmt.Printf("%v,%v,%v\n", i, cnt, furth)
 	//	}
 
-	for i := 0; i < 200; i += 1 {
-		cnt, furth, _ := countCells(start, walls, i, w, h)
+	for i := 25; i <= 25; i += 1 {
+		cnt, furth, distances := countCells(start, walls, i, w, h)
 		fmt.Printf("%v,%v,%v\n", i, cnt, furth)
 
-		fmt.Scanln()
+		plotCounts := map[int]int{}
+		for point, d := range distances {
+			if d <= i && d%2 == (i%2) {
+				plotCounts[point.y-start.y]++
+			}
+		}
+		for j := -i; j <= i; j++ {
+			fmt.Println(plotCounts[j])
+		}
+
+		//fmt.Scanln()
 		//fmt.Println(nums[i], cnt)
 	}
 	//for i := 1; i <= 262; i++ {
