@@ -37,22 +37,28 @@ type PlotCount struct {
 	rowNum int
 	width  int
 	left   bool
+	odd    bool
 }
 
 func part2n(input []string) {
 	maxStep := len(input) * 2
 	walls, start, w, h := parse(input, 19)
 	plotCounts := map[PlotCount]int{}
-	for i := 0; i <= maxStep*3; i += 2 {
+	for i := 0; i <= maxStep*3; i += 1 {
 		_, _, distances := countCells(start, walls, i, w, h)
 		for point, d := range distances {
 			if d <= i && d%2 == (i%2) {
 				width := i - abs(point.y-start.y)
-				if point.x < start.x {
-					plotCounts[PlotCount{point.y - start.y, width, true}]++
-				}
-				if point.x > start.x {
-					plotCounts[PlotCount{point.y - start.y, width, false}]++
+				if point.x != start.x {
+					rowNum := point.y - start.y
+					left := point.x < start.x
+					odd := width%2 == 1
+					plotCounts[PlotCount{rowNum, width, left, odd}]++
+					if width == maxStep+1 {
+						if abs(point.x-start.x) != maxStep+1 {
+							plotCounts[PlotCount{rowNum, width - 1, left, odd}]++
+						}
+					}
 				}
 			}
 		}
@@ -61,7 +67,7 @@ func part2n(input []string) {
 	//fmt.Println(plotCounts)
 	//steps := 63
 
-	for steps := 26; steps <= 26; steps++ {
+	for steps := 5; steps <= 41; steps++ {
 		sum := 0
 		for i := -steps; i <= steps; i++ {
 			rowNum := i % maxStep
@@ -70,17 +76,19 @@ func part2n(input []string) {
 			widthMod := width % blockWidth
 			widthMult := width / blockWidth
 
-			cntRemLeft := plotCounts[PlotCount{rowNum, widthMod, true}]
-			cntMultLeft := widthMult * plotCounts[PlotCount{rowNum, blockWidth, true}]
-			cntRemRight := plotCounts[PlotCount{rowNum, widthMod, false}]
-			cntMultRight := widthMult * plotCounts[PlotCount{rowNum, blockWidth, false}]
+			odd := width%2 == 1
+
+			cntRemLeft := plotCounts[PlotCount{rowNum, widthMod, true, odd}]
+			cntMultLeft := widthMult * plotCounts[PlotCount{rowNum, blockWidth, true, odd}]
+			cntRemRight := plotCounts[PlotCount{rowNum, widthMod, false, odd}]
+			cntMultRight := widthMult * plotCounts[PlotCount{rowNum, blockWidth, false, odd}]
 			x0 := 0
 			if abs(i)%2 == steps%2 {
 				x0 = 1
 			}
 			s := cntRemLeft + cntMultLeft + cntRemRight + cntMultRight + x0
 			fmt.Println(i, cntRemLeft, cntMultLeft, cntRemRight, cntMultRight, x0, s)
-			sum += cntRemLeft + cntMultLeft + cntRemRight + cntMultRight + x0
+			sum += s
 		}
 		fmt.Println("Part2", steps, sum)
 	}
@@ -108,7 +116,7 @@ func part2(input []string) {
 	//		fmt.Printf("%v,%v,%v\n", i, cnt, furth)
 	//	}
 
-	for i := 25; i <= 25; i += 1 {
+	for i := 5; i <= 62; i += 1 {
 		cnt, furth, distances := countCells(start, walls, i, w, h)
 		fmt.Printf("%v,%v,%v\n", i, cnt, furth)
 
@@ -119,7 +127,7 @@ func part2(input []string) {
 			}
 		}
 		for j := -i; j <= i; j++ {
-			fmt.Println(plotCounts[j])
+			//fmt.Println(plotCounts[j])
 		}
 
 		//fmt.Scanln()
