@@ -16,80 +16,131 @@ type Node struct {
 	dist  int
 }
 
+type Periodic struct {
+	period        int
+	leadIn        []int
+	periodOffsets []int
+}
+
 func Run() {
-	var input, _ = utils.ReadLines("day21/test2.txt")
-	//part1(input)
+	var input, _ = utils.ReadLines("day21/input.txt")
+	part1(input)
 	part2(input)
 }
 
 func part1(input []string) {
 
-	steps := 6
+	steps := 64
 	walls, start, width, height := parse(input, 1)
 	printGrid(walls, width, height, map[Point]int{}, steps)
 
-	cnt, _ := countCells(start, walls, steps, width, height)
+	cnt, _, _ := countCells(start, walls, steps, width, height)
 
 	fmt.Println("Part 1", cnt)
 }
 
-type PlotCount struct {
-	evenStepNum bool
-	mod2xRow    int
-	aboveStart  bool
-	mod2xCol    int
+func sum(nums []int) int {
+	sum := 0
+	for _, num := range nums {
+		sum += num
+	}
+	return sum
 }
 
-func part2n(input []string) {
-	steps := 48
-	for i := -steps; i <= steps; i++ {
-		//rowWidth := 2*steps+1 - 2*abs(i)
-
+func calc(step int, row int, periodics map[int]Periodic) int {
+	period := periodics[row]
+	total := 0
+	if step < len(period.leadIn) {
+		total += sum(period.leadIn[:step+1])
+		step = 0
+	} else {
+		total += sum(period.leadIn)
+		step -= len(period.leadIn) - 1
 	}
+
+	full := step / period.period
+	partial := step % period.period
+	total += full * sum(period.periodOffsets)
+
+	if partial > 0 {
+		total += sum(period.periodOffsets[:partial])
+	}
+	return total
+}
+
+func findPeriodic(nums []int, period int) Periodic {
+	p := Periodic{}
+
+	diffs := []int{}
+	for i := 0; i < len(nums); i++ {
+		pre := 0
+		if i != 0 {
+			pre = nums[i-1]
+		}
+		diffs = append(diffs, nums[i]-pre)
+	}
+
+	cnt := 0
+	for i := 0; i < len(diffs)-period; i++ {
+		if diffs[i] != diffs[i+period] {
+			cnt = 0
+		} else {
+			cnt++
+		}
+		if cnt == period {
+			p.period = period
+			p.leadIn = diffs[:i-period+1]
+			p.periodOffsets = diffs[i-period+1 : i+1]
+			return p
+		}
+	}
+
+	return p
 }
 
 func part2(input []string) {
-	r := 5
-	maxC := 54 * r
-	l := (len(input) - 1) / 2
-	sc := maxC / l
-	scale := sc*2 + 1
-	fmt.Println("scale", scale)
-	walls, start, w, h := parse(input, 17)
+	periodics := map[int]Periodic{}
 
-	//nums := []int{6, 10, 50, 100, 500, 1000}
-	//for i := 0; i < len(nums); i++ {
-	//	cnt := countCells(start, walls, nums[i])
-	//	fmt.Println(nums[i], cnt)
-	//}
+	per := len(input)
+	walls, start, w, h := parse(input, 5)
+	seqs := map[int][]int{}
+	for i := 0; i <= per*3; i += 1 {
+		fmt.Println(i, per*3)
+		_, _, distances := countCells(start, walls, i, w, h)
 
-	//nums := []int{2 * r, 6 * r, 18 * r}
+		plotCounts := map[int]int{}
+		for point, d := range distances {
+			if d <= i && d%2 == (i%2) {
+				plotCounts[point.y-start.y]++
+			}
+		}
 
-	//	for i := r + 1; i < 54*r; i += 2 {
-	//		cnt, furth := countCells(start, walls, i, w, h)
-	//		fmt.Printf("%v,%v,%v\n", i, cnt, furth)
-	//	}
-
-	for i := 1; i < 200; i += 1 {
-		cnt, furth := countCells(start, walls, i, w, h)
-		fmt.Printf("%v,%v,%v\n", i, cnt, furth)
-
-		//fmt.Scanln()
-		//fmt.Println(nums[i], cnt)
+		for i := -per; i <= per; i++ {
+			seqs[i] = append(seqs[i], plotCounts[i])
+		}
 	}
-	//for i := 1; i <= 262; i++ {
-	//	cnt := countCells(start, walls, i)
-	//	fmt.Println(i, cnt)
-	//}
-	//fmt.Println()
-	//for i := 1; i <= 10; i++ {
-	//	cnt := countCells(start, walls, 65*i)
-	//	fmt.Println(65*i, cnt)
-	//}
+
+	for i := -per; i <= per; i++ {
+		periodic := findPeriodic(seqs[i], per)
+		periodics[i] = periodic
+	}
+
+	steps := 26501365
+	sum := 0
+	for row := -steps; row <= steps; row++ {
+		segment := row / per
+		modRow := row % per
+		calcSteps := steps - per*abs(segment)
+		sum += calc(calcSteps, modRow, periodics)
+		if row%10000 == 0 {
+			fmt.Println(row, sum)
+		}
+	}
+	fmt.Printf("%v,%v\n", steps, sum)
 
 }
 
-func countCells(start Point, walls map[Point]bool, steps int, w int, h int) (int, int) {
+func countCells(start Point, walls map[Point]bool, steps int, w int, h int) (int, int, map[Point]int) {
 	distances := map[Point]int{}
 	distances[start] = 0
 
@@ -122,7 +173,7 @@ func countCells(start Point, walls map[Point]bool, steps int, w int, h int) (int
 		}
 	}
 	//printGrid(walls, w, h, distances, steps)
-	return cnt, max
+	return cnt, max, distances
 }
 
 func abs(a int) int {
