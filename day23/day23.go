@@ -14,11 +14,12 @@ type Path struct {
 	prev   *Path
 	points map[Point]bool
 	curP   Point
+	prevP  Point
 	dist   int
 }
 
 func Run() {
-	var input, _ = utils.ReadLines("day23/test.txt")
+	var input, _ = utils.ReadLines("day23/input.txt")
 	grid, w, h := parse(input)
 
 	start := Point{1, 0}
@@ -26,7 +27,7 @@ func Run() {
 	maxDistSoFar := 0
 	maxByPoint := map[Point]int{}
 
-	paths := []*Path{{nil, map[Point]bool{}, start, 0}}
+	paths := []*Path{{nil, map[Point]bool{}, start, Point{0, 0}, 0}}
 	cnt := 0
 	for len(paths) > 0 {
 		cnt++
@@ -42,6 +43,7 @@ func Run() {
 			paths = paths[:len(paths)-1]
 		} else if len(neighbors) == 1 {
 			cPath.points[cPath.curP] = true
+			cPath.prevP = cPath.curP
 			cPath.curP = neighbors[0]
 			cPath.dist++
 		} else if len(neighbors) > 1 {
@@ -49,17 +51,17 @@ func Run() {
 			cPath.points[cPath.curP] = true
 			paths = paths[:len(paths)-1]
 			for i := 0; i < len(neighbors); i++ {
-				newPath := &Path{cPath, map[Point]bool{}, neighbors[i], cPath.dist + 1}
+				newPath := &Path{cPath, map[Point]bool{}, neighbors[i], cPath.curP, cPath.dist + 1}
 				paths = append(paths, newPath)
 			}
 		}
 		//printPath(grid, w, h, cPath)
-		//if cnt%10000 == 0 {
-		fmt.Println("Max", cnt, maxDistSoFar, len(paths))
-		//}
+		if cnt%100000 == 0 {
+			fmt.Println("Max", cnt, maxDistSoFar, len(paths))
+		}
 	}
 
-	fmt.Println("Part 1", maxDistSoFar, cnt)
+	fmt.Println("Answer", maxDistSoFar, cnt)
 }
 
 var dirs = [4]Point{{-1, 0}, {0, -1}, {1, 0}, {0, 1}}
@@ -69,7 +71,7 @@ func getOpenAdjPoints(grid map[Point]byte, p *Path) []Point {
 	for _, d := range dirs {
 		test := Point{p.curP.x + d.x, p.curP.y + d.y}
 		if cell, ok := grid[test]; ok {
-			if moveAllowed(cell, d, true) && !isAlreadyOnPath(p, test) {
+			if moveAllowed(cell, d, true) && test != p.prevP && !isAlreadyOnPath(p, test) {
 				newPoints = append(newPoints, test)
 			}
 		}
